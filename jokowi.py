@@ -397,11 +397,13 @@ df3 = pd.DataFrame(neutral_bigrams, columns=['Teks', 'Jumlah'])
 fig1 = px.bar(df1, x='Jumlah', y='Teks', orientation='h',
               title='20 Bigram Teratas dalam Teks Positif',
               labels={'Jumlah': 'Jumlah', 'Teks': 'Bigram'}, color='Teks')
+st.plotly_chart(fig1, use_container_width=True)
 
 # Plot bigram untuk sentimen negatif
 fig2 = px.bar(df2, x='Jumlah', y='Teks', orientation='h',
               title='20 Bigram Teratas dalam Teks Negatif',
               labels={'Jumlah': 'Jumlah', 'Teks': 'Bigram'}, color='Teks')
+st.plotly_chart(fig2, use_container_width=True)
 
 # Plot bigram untuk sentimen netral
 fig3 = px.bar(df3, x='Jumlah', y='Teks', orientation='h',

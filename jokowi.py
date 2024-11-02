@@ -295,17 +295,17 @@ neutral_text_en = ' '.join(english_data[english_data['sentiment'] == 'neutral'][
 
 # Menampilkan dataframe untuk setiap kategori sentimen bahasa Inggris
 st.write("### DataFrame untuk Sentimen Positif (Bahasa Inggris)")
-st.dataframe(english_data[english_data['sentiment'] == 'positive'].drop(columns=['Clean Text', 'Judul Berita'], errors='ignore'))
+st.dataframe(english_data[english_data['sentiment'] == 'positive'].drop(columns=['Clean Text'], errors='ignore'))
 plot_wordcloud(positive_text_en, 'positive_sentiment_en.png')
 st.image('positive_sentiment_en.png', use_column_width=True)
 
 st.write("### DataFrame untuk Sentimen Negatif (Bahasa Inggris)")
-st.dataframe(english_data[english_data['sentiment'] == 'negative'].drop(columns=['Clean Text', 'Judul Berita'], errors='ignore'))
+st.dataframe(english_data[english_data['sentiment'] == 'negative'].drop(columns=['Clean Text'], errors='ignore'))
 plot_wordcloud(negative_text_en, 'negative_sentiment_en.png')
 st.image('negative_sentiment_en.png', use_column_width=True)
 
 st.write("### DataFrame untuk Sentimen Netral (Bahasa Inggris)")
-st.dataframe(english_data[english_data['sentiment'] == 'neutral'].drop(columns=['Clean Text', 'Judul Berita'], errors='ignore'))
+st.dataframe(english_data[english_data['sentiment'] == 'neutral'].drop(columns=['Clean Text'], errors='ignore'))
 plot_wordcloud(neutral_text_en, 'neutral_sentiment_en.png')
 st.image('neutral_sentiment_en.png', use_column_width=True)
 
@@ -319,17 +319,17 @@ neutral_text_id = ' '.join(indonesian_data[indonesian_data['sentiment'] == 'neut
 
 # Menampilkan dataframe untuk setiap kategori sentimen bahasa Indonesia
 st.write("### DataFrame untuk Sentimen Positif (Bahasa Indonesia)")
-st.dataframe(indonesian_data[indonesian_data['sentiment'] == 'positive'].drop(columns=['Clean Text', 'Judul Berita'], errors='ignore'))
+st.dataframe(indonesian_data[indonesian_data['sentiment'] == 'positive'].drop(columns=['Clean Text'], errors='ignore'))
 plot_wordcloud(positive_text_id, 'positive_sentiment_id.png')
 st.image('positive_sentiment_id.png', use_column_width=True)
 
 st.write("### DataFrame untuk Sentimen Negatif (Bahasa Indonesia)")
-st.dataframe(indonesian_data[indonesian_data['sentiment'] == 'negative'].drop(columns=['Clean Text', 'Judul Berita'], errors='ignore'))
+st.dataframe(indonesian_data[indonesian_data['sentiment'] == 'negative'].drop(columns=['Clean Text'], errors='ignore'))
 plot_wordcloud(negative_text_id, 'negative_sentiment_id.png')
 st.image('negative_sentiment_id.png', use_column_width=True)
 
 st.write("### DataFrame untuk Sentimen Netral (Bahasa Indonesia)")
-st.dataframe(indonesian_data[indonesian_data['sentiment'] == 'neutral'].drop(columns=['Clean Text', 'Judul Berita'], errors='ignore'))
+st.dataframe(indonesian_data[indonesian_data['sentiment'] == 'neutral'].drop(columns=['Clean Text'], errors='ignore'))
 plot_wordcloud(neutral_text_id, 'neutral_sentiment_id.png')
 st.image('neutral_sentiment_id.png', use_column_width=True)
 

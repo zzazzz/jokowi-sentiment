@@ -14,7 +14,7 @@ data = pd.read_csv(data_path)
 
 # Menghapus kolom yang tidak diperlukan
 data = data.drop(columns=['confidence', 'text_word_count', 'word_count'], errors='ignore')
-st.write("### Pranala Data", data.head())
+st.write("### Pranala Data", data)
 st.write("### 10 Media Teratas Berdasarkan Jumlah Publikasi")
 
 # Menghitung jumlah media unik

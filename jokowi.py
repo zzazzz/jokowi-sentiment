@@ -129,7 +129,22 @@ language_counts = data['Detected Language'].value_counts().reset_index()
 language_counts.columns = ['Bahasa', 'Jumlah Publikasi']
 
 # Tampilkan tabel
+# Menambahkan custom CSS untuk lebar kolom yang mengikuti konten
 st.write("### Jumlah Publikasi Berdasarkan Bahasa")
+st.markdown("""
+    <style>
+    /* Mengatur agar setiap kolom tabel menyesuaikan lebar kontennya */
+    table {
+        width: auto !important;
+    }
+    th, td {
+        padding: 10px;
+        white-space: nowrap;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Menampilkan tabel
 st.table(language_counts)
 
 st.write("### Panjang Teks dalam Berbagai Bahasa Menggunakan Stopword")

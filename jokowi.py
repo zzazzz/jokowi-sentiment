@@ -8,6 +8,9 @@ from wordcloud import WordCloud
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 
+# Set page configuration to wide layout
+st.set_page_config(page_title="Sentimen Jokowi", layout="wide")
+
 # Memuat data
 data_path = "publik persepsi.csv"  # Path ke file data Anda
 data = pd.read_csv(data_path)

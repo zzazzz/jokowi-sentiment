@@ -666,25 +666,66 @@ def compute_anomalies(df):
 @st.cache_data(show_spinner=False)
 def compute_ratio_by_time(df, granularity="month"):
     """Return DataFrame with time column and positive/negative ratio."""
+    df_temp = df.copy()
     if granularity == "month":
-        df["time_period"] = df["year_month"]
-        sort_key = "year_month_dt"
-        df["sort_key"] = pd.to_datetime(df["year_month"] + "-01")
+        df_temp["time_period"] = df_temp["year_month"]
+        df_temp["sort_key"] = pd.to_datetime(df_temp["year_month"] + "-01")
     elif granularity == "quarter":
-        df["time_period"] = df["quarter"]
-        # Extract year-quarter for sorting
-        df["sort_key"] = pd.to_datetime(df["quarter"].str.replace("Q", "").str.split().str[1] + "-" +
-                                        (df["quarter"].str.extract(r"Q(\d)")[0].astype(int)*3).astype(str) + "-01")
+        # Handle various quarter formats: "Q1 2020", "2020Q1", "2020-Q1", "Q1-2020"
+        quarter_series = df_temp["quarter"].astype(str)
+        
+        def parse_quarter(q):
+            q_str = str(q)
+            # Pattern: Q1 2020 or Q1-2020
+            match = re.search(r'Q(\d)[\s\-]?(\d{4})', q_str)
+            if match:
+                q_num = int(match.group(1))
+                year = int(match.group(2))
+                return year, q_num
+            # Pattern: 2020Q1 or 2020-Q1
+            match = re.search(r'(\d{4})[\s\-]?Q(\d)', q_str)
+            if match:
+                year = int(match.group(1))
+                q_num = int(match.group(2))
+                return year, q_num
+            # Pattern: 2020 Q1
+            parts = q_str.split()
+            if len(parts) == 2:
+                year = int(parts[0])
+                q_num = int(parts[1].replace('Q', ''))
+                return year, q_num
+            return None, None
+        
+        years = []
+        q_nums = []
+        for q in quarter_series:
+            y, qn = parse_quarter(q)
+            years.append(y)
+            q_nums.append(qn)
+        
+        sort_keys = []
+        for y, qn in zip(years, q_nums):
+            if y is None or qn is None:
+                sort_keys.append(pd.NaT)
+            else:
+                month = (qn - 1) * 3 + 1
+                sort_keys.append(pd.to_datetime(f"{y}-{month:02d}-01"))
+        df_temp["sort_key"] = sort_keys
+        df_temp["time_period"] = df_temp["quarter"]
     else:  # year
-        df["time_period"] = df["year"].astype(str)
-        df["sort_key"] = pd.to_datetime(df["year"].astype(str) + "-01-01")
+        df_temp["time_period"] = df_temp["year"].astype(str)
+        df_temp["sort_key"] = pd.to_datetime(df_temp["year"].astype(str) + "-01-01")
 
-    ratio = df.groupby(["time_period", "sentiment"]).size().unstack(fill_value=0)
+    ratio = df_temp.groupby(["time_period", "sentiment"]).size().unstack(fill_value=0)
+    # Ensure columns exist
+    for s in SENTIMENT_ORDER:
+        if s not in ratio.columns:
+            ratio[s] = 0
     ratio["positive_ratio"] = ratio["positive"] / (ratio["positive"] + ratio["negative"] + 1e-9) * 100
     ratio["negative_ratio"] = ratio["negative"] / (ratio["positive"] + ratio["negative"] + 1e-9) * 100
     ratio = ratio.reset_index()
     # Attach sort_key
-    sort_df = df[["time_period", "sort_key"]].drop_duplicates()
+    sort_df = df_temp[["time_period", "sort_key"]].drop_duplicates()
     ratio = ratio.merge(sort_df, on="time_period", how="left")
     ratio = ratio.sort_values("sort_key")
     return ratio
@@ -1049,24 +1090,37 @@ with tab2:
 
             if st.session_state.clicked_sentiment_media:
                 sent_filter = st.session_state.clicked_sentiment_media
-                news_df = media_df[media_df["sentiment"] == sent_filter].sort_values("Waktu Terbit", ascending=False).head(20)
+                
+                # Filter tanggal
+                st.markdown("#### 📅 Filter Tanggal")
+                col_date1, col_date2 = st.columns(2)
+                min_date = media_df["Waktu Terbit"].min().date() if not media_df.empty else pd.Timestamp.now().date()
+                max_date = media_df["Waktu Terbit"].max().date() if not media_df.empty else pd.Timestamp.now().date()
+                with col_date1:
+                    start_date = st.date_input("Dari", value=min_date, key="start_date_media")
+                with col_date2:
+                    end_date = st.date_input("Sampai", value=max_date, key="end_date_media")
+                
+                filtered_media_df = media_df[(media_df["Waktu Terbit"].dt.date >= start_date) & (media_df["Waktu Terbit"].dt.date <= end_date)]
+                news_df = filtered_media_df[filtered_media_df["sentiment"] == sent_filter].sort_values("Waktu Terbit", ascending=False).head(20)
+                
                 st.markdown(f"#### Berita dengan sentimen **{SENTIMENT_LABEL[sent_filter]}** dari **{selected_media}**")
                 if len(news_df) == 0:
-                    st.info("Tidak ada berita dengan sentimen tersebut.")
+                    st.info("Tidak ada berita dengan sentimen tersebut dalam rentang tanggal yang dipilih.")
                 else:
                     for _, row in news_df.iterrows():
                         sent = row["sentiment"]
                         dt = row["Waktu Terbit"].strftime("%Y-%m-%d") if not pd.isna(row["Waktu Terbit"]) else "-"
                         st.markdown(f"""
-<div class="news-card news-{sent[:3]}">
-  <div class="news-title">{style_sentiment_badge(sent)} &nbsp; {row["Judul Berita"]}</div>
-  <div class="news-meta">
-    <span>📅 {dt}</span>
-    <span>🌐 {row["Detected Language"]}</span>
-    {"<span>🔗 <a href='" + row["Link Berita"] + "' target='_blank' style='color:#93c5fd;text-decoration:none;'>Buka sumber</a></span>" if str(row["Link Berita"]).strip() else ""}
-  </div>
-</div>
-""", unsafe_allow_html=True)
+            <div class="news-card news-{sent[:3]}">
+            <div class="news-title">{style_sentiment_badge(sent)} &nbsp; {row["Judul Berita"]}</div>
+            <div class="news-meta">
+                <span>📅 {dt}</span>
+                <span>🌐 {row["Detected Language"]}</span>
+                {"<span>🔗 <a href='" + row["Link Berita"] + "' target='_blank' style='color:#93c5fd;text-decoration:none;'>Buka sumber</a></span>" if str(row["Link Berita"]).strip() else ""}
+            </div>
+            </div>
+            """, unsafe_allow_html=True)
                 if st.button("Tutup daftar berita", key="reset_news_media"):
                     st.session_state.clicked_sentiment_media = None
                     st.rerun()
@@ -1247,6 +1301,15 @@ with tab5:
             keyword_tab5 = st.text_input("Cari judul", placeholder="misalnya: ekonomi, infrastruktur", key="keyword_tab5")
         with col_f4:
             n_show_tab5 = st.number_input("Jumlah", min_value=5, max_value=100, value=20, step=5, key="n_show_tab5")
+        
+        # Date range filter
+        col_date1, col_date2 = st.columns(2)
+        min_date_all = dff["Waktu Terbit"].min().date() if not dff.empty else pd.Timestamp.now().date()
+        max_date_all = dff["Waktu Terbit"].max().date() if not dff.empty else pd.Timestamp.now().date()
+        with col_date1:
+            start_date_tab5 = st.date_input("Dari tanggal", value=min_date_all, key="start_date_tab5")
+        with col_date2:
+            end_date_tab5 = st.date_input("Sampai tanggal", value=max_date_all, key="end_date_tab5")
 
         news_df_tab5 = dff.copy()
         if sent_filter_tab5 != "Semua":
@@ -1255,6 +1318,8 @@ with tab5:
             news_df_tab5 = news_df_tab5[news_df_tab5["year"] == int(year_filter_tab5)]
         if keyword_tab5.strip():
             news_df_tab5 = news_df_tab5[news_df_tab5["Judul Berita"].str.contains(keyword_tab5.strip(), case=False, na=False)]
+        # Filter tanggal
+        news_df_tab5 = news_df_tab5[(news_df_tab5["Waktu Terbit"].dt.date >= start_date_tab5) & (news_df_tab5["Waktu Terbit"].dt.date <= end_date_tab5)]
         news_df_tab5 = news_df_tab5.sort_values("Waktu Terbit", ascending=False).head(int(n_show_tab5))
 
         col_m1, col_m2, col_m3 = st.columns(3)

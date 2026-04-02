@@ -1202,8 +1202,7 @@ with tab3:
             fig_ng.update_layout(**PLOT_LAYOUT, height=max(400, 34 * len(ngram_df_local) + 100), showlegend=False, xaxis_title="Frekuensi", yaxis_title=None)
             st.plotly_chart(fig_ng, use_container_width=True)
 
-            # Dropdown untuk memilih frasa dan melihat berita (dengan sentimen yang sama)
-            st.markdown("#### 🔍 Telusuri berita berdasarkan frasa (hanya dengan sentimen yang sama)")
+            st.markdown("#### 🔍 Telusuri berita berdasarkan frasa")
 
             col_phrase, col_date = st.columns(2)
 

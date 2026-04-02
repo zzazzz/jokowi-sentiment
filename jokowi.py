@@ -28,7 +28,7 @@ st.set_page_config(
 )
 
 # =============================================================================
-# THEME / CSS (diperbarui dengan card-style untuk konten tab)
+# THEME / CSS
 # =============================================================================
 st.markdown(
     """
@@ -737,7 +737,7 @@ data_path = pick_data_file()
 df = load_data(str(data_path))
 
 # =============================================================================
-# SIDEBAR (hanya filter global penting)
+# SIDEBAR
 # =============================================================================
 with st.sidebar:
     st.markdown("### 🔎 Filter Global")
@@ -958,7 +958,7 @@ with tab1:
             else:
                 st.info("Tidak ada data tahunan.")
 
-        st.markdown("### Skor Sentimen Agregat Bulanan (dengan MA-3)")
+        st.markdown("### Skor Sentimen Agregat Bulanan")
         st.markdown("<div class='section-note'>Skor rata-rata (+1 positif, 0 netral, −1 negatif).</div>", unsafe_allow_html=True)
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
         if len(monthly):
@@ -1057,7 +1057,7 @@ with tab2:
         st.plotly_chart(fig_top, use_container_width=True)
 
         st.markdown("---")
-        st.markdown("### Proporsi Sentimen per Media (pilih media dari daftar)")
+        st.markdown("### Proporsi Sentimen per Media")
         # Daftar media diurutkan dari yang paling banyak beritanya
         media_list = dff["Nama Media"].value_counts().index.tolist()
         selected_media = st.selectbox("Pilih media:", media_list, key="media_select")
@@ -1090,21 +1090,33 @@ with tab2:
 
             if st.session_state.clicked_sentiment_media:
                 sent_filter = st.session_state.clicked_sentiment_media
-                
-                # Filter tanggal
-                st.markdown("#### 📅 Filter Tanggal")
-                col_date1, col_date2 = st.columns(2)
-                min_date = media_df["Waktu Terbit"].min().date() if not media_df.empty else pd.Timestamp.now().date()
-                max_date = media_df["Waktu Terbit"].max().date() if not media_df.empty else pd.Timestamp.now().date()
-                with col_date1:
-                    start_date = st.date_input("Dari", value=min_date, key="start_date_media")
-                with col_date2:
-                    end_date = st.date_input("Sampai", value=max_date, key="end_date_media")
-                
-                filtered_media_df = media_df[(media_df["Waktu Terbit"].dt.date >= start_date) & (media_df["Waktu Terbit"].dt.date <= end_date)]
+
+                # Dua kolom: judul berita (kiri) dan filter tanggal (kanan)
+                col_title, col_date = st.columns([3, 2])
+                with col_title:
+                    st.markdown(f"#### Berita dengan sentimen **{SENTIMENT_LABEL[sent_filter]}** dari **{selected_media}**")
+                with col_date:
+                    st.markdown("##### Filter Tanggal")
+                    min_date_media = media_df["Waktu Terbit"].min().date() if not media_df.empty else pd.Timestamp.now().date()
+                    max_date_media = media_df["Waktu Terbit"].max().date() if not media_df.empty else pd.Timestamp.now().date()
+                    date_range_media = st.date_input(
+                        "",
+                        value=(min_date_media, max_date_media),
+                        key="date_range_media",
+                        label_visibility="collapsed"
+                    )
+                    if len(date_range_media) == 2:
+                        start_date, end_date = date_range_media
+                    else:
+                        start_date, end_date = min_date_media, max_date_media
+
+                filtered_media_df = media_df[
+                    (media_df["Waktu Terbit"].dt.date >= start_date) &
+                    (media_df["Waktu Terbit"].dt.date <= end_date)
+                ]
                 news_df = filtered_media_df[filtered_media_df["sentiment"] == sent_filter].sort_values("Waktu Terbit", ascending=False).head(20)
-                
-                st.markdown(f"#### Berita dengan sentimen **{SENTIMENT_LABEL[sent_filter]}** dari **{selected_media}**")
+
+                # Tampilkan daftar berita
                 if len(news_df) == 0:
                     st.info("Tidak ada berita dengan sentimen tersebut dalam rentang tanggal yang dipilih.")
                 else:
@@ -1154,11 +1166,7 @@ with tab3:
                     st.image(img, use_column_width=True)
 
         st.markdown("---")
-        st.markdown("### Analisis N-Gram 1–3 Kata (dengan eksplorasi berita)")
-        st.markdown(
-            "<div class='section-note'>Pilih level n-gram dan sentimen. Gunakan dropdown di bawah bar chart untuk memilih frasa dan melihat berita yang mengandung frasa tersebut dengan sentimen yang sama.</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("### Analisis N-Gram 1–3 Kata")
 
         col_ng1, col_ng2 = st.columns(2)
         with col_ng1:
@@ -1196,33 +1204,54 @@ with tab3:
 
             # Dropdown untuk memilih frasa dan melihat berita (dengan sentimen yang sama)
             st.markdown("#### 🔍 Telusuri berita berdasarkan frasa (hanya dengan sentimen yang sama)")
-            phrase_list = ngram_df_local["phrase"].tolist()
-            selected_phrase = st.selectbox("Pilih frasa:", phrase_list, key="phrase_select_ngram")
+
+            col_phrase, col_date = st.columns(2)
+
+            with col_phrase:
+                phrase_list = ngram_df_local["phrase"].tolist()
+                selected_phrase = st.selectbox("Pilih frasa:", phrase_list, key="phrase_select_ngram")
+
+            with col_date:
+                min_date_ngram = dff["Waktu Terbit"].min().date() if not dff.empty else pd.Timestamp.now().date()
+                max_date_ngram = dff["Waktu Terbit"].max().date() if not dff.empty else pd.Timestamp.now().date()
+                date_range_ngram = st.date_input(
+                    "📅 Rentang tanggal",
+                    value=(min_date_ngram, max_date_ngram),
+                    key="date_range_ngram"
+                )
+                if len(date_range_ngram) == 2:
+                    start_ngram, end_ngram = date_range_ngram
+                else:
+                    start_ngram, end_ngram = min_date_ngram, max_date_ngram
+
             if selected_phrase:
                 phrase_lower = selected_phrase.lower()
-                # Cari berita dengan sentimen focus_sent dan mengandung frasa
-                news_with_phrase = dff[(dff["sentiment"] == focus_sent) & (dff["processed_text"].str.contains(phrase_lower, na=False, regex=False))]
+
+                # Cari berita dengan sentimen focus_sent, mengandung frasa, dan dalam rentang tanggal
+                news_with_phrase = dff[
+                    (dff["sentiment"] == focus_sent) &
+                    (dff["processed_text"].str.contains(phrase_lower, na=False, regex=False)) &
+                    (dff["Waktu Terbit"].dt.date >= start_ngram) &
+                    (dff["Waktu Terbit"].dt.date <= end_ngram)
+                ]
                 if len(news_with_phrase) == 0:
-                    st.info(f"Tidak ditemukan berita dengan sentimen {SENTIMENT_LABEL[focus_sent]} yang mengandung frasa '{selected_phrase}'.")
+                    st.info(f"Tidak ditemukan berita dengan sentimen {SENTIMENT_LABEL[focus_sent]} yang mengandung frasa '{selected_phrase}' dalam rentang tanggal tersebut.")
                 else:
                     st.markdown(f"**{len(news_with_phrase)}** berita ditemukan dengan sentimen **{SENTIMENT_LABEL[focus_sent]}** dan mengandung frasa **'{selected_phrase}'**.")
                     for _, row in news_with_phrase.head(10).iterrows():
                         sent = row["sentiment"]
                         dt = row["Waktu Terbit"].strftime("%Y-%m-%d") if not pd.isna(row["Waktu Terbit"]) else "-"
                         st.markdown(f"""
-<div class="news-card news-{sent[:3]}">
-  <div class="news-title">{style_sentiment_badge(sent)} &nbsp; {row["Judul Berita"]}</div>
-  <div class="news-meta">
-    <span>📰 {row["Nama Media"]}</span>
-    <span>📅 {dt}</span>
-    <span>🌐 {row["Detected Language"]}</span>
-    {"<span>🔗 <a href='" + row["Link Berita"] + "' target='_blank' style='color:#93c5fd;text-decoration:none;'>Buka sumber</a></span>" if str(row["Link Berita"]).strip() else ""}
-  </div>
-</div>
-""", unsafe_allow_html=True)
-        else:
-            plot_blank_message("Belum cukup data untuk membentuk n-gram pada filter ini.")
-        st.markdown('</div>', unsafe_allow_html=True)
+            <div class="news-card news-{sent[:3]}">
+            <div class="news-title">{style_sentiment_badge(sent)} &nbsp; {row["Judul Berita"]}</div>
+            <div class="news-meta">
+                <span>📰 {row["Nama Media"]}</span>
+                <span>📅 {dt}</span>
+                <span>🌐 {row["Detected Language"]}</span>
+                {"<span>🔗 <a href='" + row["Link Berita"] + "' target='_blank' style='color:#93c5fd;text-decoration:none;'>Buka sumber</a></span>" if str(row["Link Berita"]).strip() else ""}
+            </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # =============================================================================
 # TAB 4 — RASIO SENTIMEN
@@ -1231,8 +1260,6 @@ with tab4:
     with st.container():
         st.markdown('<div class="tab-content-card">', unsafe_allow_html=True)
         st.markdown("### Rasio Positif vs Negatif")
-        st.markdown("<div class='section-note'>Pilih granularitas waktu untuk melihat keseimbangan antara berita positif dan negatif.</div>", unsafe_allow_html=True)
-
         granularity = st.selectbox("Tampilkan berdasarkan:", ["Bulan", "Kuartal", "Tahun"], index=0)
         if granularity == "Bulan":
             time_col = "month"
@@ -1287,39 +1314,45 @@ with tab5:
         st.markdown("### Jelajahi Berita")
         st.markdown("<div class='section-note'>Filter tambahan untuk mencari dan menyortir berita.</div>", unsafe_allow_html=True)
 
-        col_f1, col_f2, col_f3, col_f4 = st.columns([2, 2, 2, 1])
-        with col_f1:
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
             sent_filter_tab5 = st.selectbox(
                 "Sentimen",
                 ["Semua", "positive", "neutral", "negative"],
                 format_func=lambda x: {"Semua": "Semua", "positive": "✅ Positif", "neutral": "⬜ Netral", "negative": "❌ Negatif"}[x],
                 key="sent_filter_tab5"
             )
-        with col_f2:
-            year_filter_tab5 = st.selectbox("Tahun", ["Semua"] + sorted(dff["year"].dropna().astype(int).unique().tolist(), reverse=True), key="year_filter_tab5")
-        with col_f3:
+
+        with col2:
+            min_date_all = dff["Waktu Terbit"].min().date() if not dff.empty else pd.Timestamp.now().date()
+            max_date_all = dff["Waktu Terbit"].max().date() if not dff.empty else pd.Timestamp.now().date()
+            date_range_tab5 = st.date_input(
+                "Rentang tanggal",
+                value=(min_date_all, max_date_all),
+                key="date_range_tab5"
+            )
+            if len(date_range_tab5) == 2:
+                start_date_tab5, end_date_tab5 = date_range_tab5
+            else:
+                start_date_tab5, end_date_tab5 = min_date_all, max_date_all
+
+        with col3:
             keyword_tab5 = st.text_input("Cari judul", placeholder="misalnya: ekonomi, infrastruktur", key="keyword_tab5")
-        with col_f4:
+
+        with col4:
             n_show_tab5 = st.number_input("Jumlah", min_value=5, max_value=100, value=20, step=5, key="n_show_tab5")
-        
-        # Date range filter
-        col_date1, col_date2 = st.columns(2)
-        min_date_all = dff["Waktu Terbit"].min().date() if not dff.empty else pd.Timestamp.now().date()
-        max_date_all = dff["Waktu Terbit"].max().date() if not dff.empty else pd.Timestamp.now().date()
-        with col_date1:
-            start_date_tab5 = st.date_input("Dari tanggal", value=min_date_all, key="start_date_tab5")
-        with col_date2:
-            end_date_tab5 = st.date_input("Sampai tanggal", value=max_date_all, key="end_date_tab5")
 
         news_df_tab5 = dff.copy()
         if sent_filter_tab5 != "Semua":
             news_df_tab5 = news_df_tab5[news_df_tab5["sentiment"] == sent_filter_tab5]
-        if year_filter_tab5 != "Semua":
-            news_df_tab5 = news_df_tab5[news_df_tab5["year"] == int(year_filter_tab5)]
         if keyword_tab5.strip():
             news_df_tab5 = news_df_tab5[news_df_tab5["Judul Berita"].str.contains(keyword_tab5.strip(), case=False, na=False)]
         # Filter tanggal
-        news_df_tab5 = news_df_tab5[(news_df_tab5["Waktu Terbit"].dt.date >= start_date_tab5) & (news_df_tab5["Waktu Terbit"].dt.date <= end_date_tab5)]
+        news_df_tab5 = news_df_tab5[
+            (news_df_tab5["Waktu Terbit"].dt.date >= start_date_tab5) &
+            (news_df_tab5["Waktu Terbit"].dt.date <= end_date_tab5)
+        ]
         news_df_tab5 = news_df_tab5.sort_values("Waktu Terbit", ascending=False).head(int(n_show_tab5))
 
         col_m1, col_m2, col_m3 = st.columns(3)

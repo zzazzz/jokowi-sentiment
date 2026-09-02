@@ -1163,7 +1163,7 @@ with tab3:
                 if img is None:
                     st.info("Tidak cukup teks untuk wordcloud.")
                 else:
-                    st.image(img, use_column_width=True)
+                    st.image(img, width="stretch")
 
         st.markdown("---")
         st.markdown("### Analisis N-Gram 1–3 Kata")
